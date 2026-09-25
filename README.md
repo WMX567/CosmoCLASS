@@ -33,7 +33,7 @@ The original `pk()` in this branch returns a list of perturbation-theory (PT) co
 
 The sampling script requires only Python and NumPy. Spectrum computation also requires `classy` compiled from this project's source. The extension depends on SciPy; building it requires Cython, NumPy, a C compiler, and the appropriate OpenBLAS/OpenMP libraries.
 
-**Rebuild and install the local extension. Standard CLASS and the old binaries included in the repository cannot replace it.** The driver checks for `pk_halofit()` and prints the path of the imported `classy` module.
+**Rebuild the local extension. Standard CLASS and the old binaries included in the repository cannot replace it.** The driver checks for `pk_halofit()` and prints the path of the imported `classy` module.
 
 Before building, adjust these settings for the target machine:
 
@@ -50,13 +50,15 @@ After updating the configuration, build in the intended Python environment. Clea
 ```bash
 cd class_public
 make clean
-make all
-cd ..
+make libclass.a
+cd python
+python setup.py build_ext --inplace --force
 
 python -c 'import classy; from classy import Class; print(classy.__file__); assert hasattr(Class, "pk_halofit")'
+cd ../..
 ```
 
-`make all` includes installation of the Python extension. Check the printed path to confirm that Python imports the newly built extension. Some CLASS resource paths are bound to the source directory at compile time, so rebuild after moving the source tree.
+`build_ext --inplace --force` rebuilds the extension inside `class_public/python/`. The driver searches this directory before installed packages, avoiding stale eggs in `site-packages`. Run the verification command from `class_public/python/` and confirm that the printed path points there. Some CLASS resource paths are bound to the source directory at compile time, so rebuild after moving the source tree.
 
 ## Generate parameter sets
 
@@ -102,7 +104,7 @@ python lhs_sampling.py \
 
 ## Compute spectra
 
-After installing the extension, compute one sample to check the environment:
+After building the extension, compute one sample to check the environment:
 
 ```bash
 python call_class.py \
@@ -211,7 +213,7 @@ Completed checks include Python/Shell syntax, LHS stratification and reproducibi
 | --- | --- |
 | `No module named classy` | Install the local extension in the active Python environment |
 | `ADDR2LINE: unbound variable` during Conda activation | Use the updated job scripts with `set -eo pipefail` instead of `set -euo pipefail` |
-| Missing `pk_halofit` | In `multinest`, run `make clean` and `make all` from `class_public/`, then verify `hasattr(Class, "pk_halofit")`; the error reports the imported extension and Python executable |
+| Missing `pk_halofit` | Follow the local build steps above, including `build_ext --inplace --force`, and verify from `class_public/python/`; the error reports the imported extension and Python executable |
 | GCC/OpenBLAS/OpenMP not found during compilation | Check the original cluster paths in Makefile and setup.py |
 | Parameter file not found | Run sampling first; pass `--params-file` when using a custom directory |
 | Invalid sample index range | Ensure `0 <= start < end <= sample count` and check the fixed job partition sizes |

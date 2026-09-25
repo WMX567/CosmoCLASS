@@ -141,6 +141,8 @@ def main() -> None:
     if args.start < 0 or end <= args.start or end > sample_count:
         ap.error(f"choose 0 <= --start < --end <= {sample_count}")
 
+    # Prefer the extension built in this checkout over installed eggs.
+    sys.path.insert(0, str(CLASS_DIR / "python"))
     import classy
     from classy import Class
 
@@ -148,8 +150,9 @@ def main() -> None:
         ap.error(
             f"Loaded classy from {classy.__file__} using {sys.executable}, "
             "but this extension has no pk_halofit(). In the multinest environment, "
-            "run `cd class_public && make clean && make all`, then verify with "
-            "`python -c 'from classy import Class; assert hasattr(Class, \"pk_halofit\")'`. "
+            "run `cd class_public && make clean && make libclass.a && cd python && "
+            "python setup.py build_ext --inplace --force`. Verify pk_halofit from "
+            "that python directory before resubmitting. "
             "Both python/classy.pyx and python/cclassy.pxd must be the updated project files."
         )
 
