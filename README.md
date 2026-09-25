@@ -12,11 +12,11 @@ Generate cosmological parameters with Latin hypercube sampling (LHS) and compute
 | `dataset/` | Default parameter directory, created during sampling |
 | `output/` | Default results directory, created during computation |
 | `data_generator.sh` | Slurm sampling job |
-| `data1.sh` … `data10.sh` | Ten training computation jobs |
-| `test_data1.sh`, `val_data1.sh` | Test and validation computation jobs |
-| `class_public/start.sh` | Submit all ten training jobs |
+| `data1.sh` … `data30.sh` | Thirty training jobs, 2000 samples per job |
+| `test_data1.sh` … `test_data2.sh`, `val_data1.sh` … `val_data2.sh` | Two jobs per split, 2000 samples per job |
+| `start.sh` | Submit all thirty training jobs |
 
-`class_public/call_class.py` and `class_public/lhs_sampling.py` delegate to the implementations in the project root, so only one copy of each implementation needs to be maintained.
+The data-generation entry points and job scripts live in the project root. Duplicate Python entry points, the obsolete job generator, and unused legacy logging and plotting scripts have been removed.
 
 ## Model and interface
 
@@ -41,7 +41,7 @@ Before building, adjust these settings for the target machine:
 | --- | --- |
 | `class_public/Makefile` | `CC`, `OPENBLAS`, `OMPFLAG`, `PYTHON` |
 | `class_public/python/setup.py` | OpenBLAS/OpenMP paths in `library_dirs` and `extra_link_args` |
-| `scripts/activate_conda.sh` | Conda settings supplied through the environment variables described below |
+| Job scripts | `conda activate multinest`; Conda must already be initialized in the job shell |
 
 The current build configuration contains paths under `/home1/mengxiwu/.conda/envs/multinest/` from the original cluster. These paths must be checked on other machines. Compiler, shared-library, and OpenMP configurations also differ between macOS and Linux.
 
@@ -130,24 +130,13 @@ The current configuration uses `l_max_scalars=11000`. Matter spectra are saved a
 
 ## Submit Slurm jobs
 
-Job scripts use `scripts/activate_conda.sh` to activate `multinest` by default. They do not load a cluster module unless explicitly configured. Confirm that the selected environment contains the local extension.
-
-If Conda is already available through `CONDA_EXE` or `PATH`, no installation path is needed. Otherwise, specify it before submitting:
+Job scripts activate the environment directly:
 
 ```bash
-export COSMOCLASS_CONDA_BASE=/path/to/miniconda3
-export COSMOCLASS_CONDA_ENV=multinest
+conda activate multinest
 ```
 
-Use the actual Conda installation directory, not an individual environment directory. `COSMOCLASS_CONDA_ENV` accepts an environment name or its full path. On a login node where Conda works, `conda info --base` and `conda env list` show these values.
-
-If the cluster requires a module, find its available name with `module spider` and configure it explicitly:
-
-```bash
-export COSMOCLASS_CONDA_MODULE=actual-module-name
-```
-
-The module is loaded first. Conda is then located using `COSMOCLASS_CONDA_BASE`, `CONDA_EXE`, or `PATH`, in that order. These variables must be exported so Slurm can inherit them; submissions that disable environment export need corresponding explicit settings.
+Conda must already be initialized in the job shell, and `multinest` must contain the local CLASS extension. The scripts use `set -eo pipefail`, without `set -u`, to allow Conda compiler activation hooks to read unset variables.
 
 ```bash
 export COSMOCLASS_DIR=/path/to/CosmoCLASS
@@ -157,14 +146,16 @@ sbatch "$COSMOCLASS_DIR/data_generator.sh"
 Wait for sampling to finish successfully and confirm that the parameter files exist, then submit the computation jobs:
 
 ```bash
-bash "$COSMOCLASS_DIR/class_public/start.sh"
+bash "$COSMOCLASS_DIR/start.sh"
 sbatch "$COSMOCLASS_DIR/test_data1.sh"
+sbatch "$COSMOCLASS_DIR/test_data2.sh"
 sbatch "$COSMOCLASS_DIR/val_data1.sh"
+sbatch "$COSMOCLASS_DIR/val_data2.sh"
 ```
 
 `start.sh` submits only the training jobs. It does not wait for sampling or submit the test and validation jobs.
 
-Training script `dataN.sh` processes indices `[6000 × (N−1), 6000 × N)`. The ten jobs cover `[0, 60000)` without overlap. Test and validation jobs each process 4000 samples, using the prefixes `classpt_sinu_halofit_test` and `classpt_sinu_halofit_val`, respectively. If you change the sample counts, update the index ranges in the job scripts accordingly.
+Training script `dataN.sh` processes indices `[2000 × (N−1), 2000 × N)`. The thirty jobs cover all 60000 training samples without gaps or overlap. Each of the test and validation splits uses two jobs covering `[0, 2000)` and `[2000, 4000)`, with prefixes `classpt_sinu_halofit_test` and `classpt_sinu_halofit_val`, respectively. There are 34 spectrum-computation jobs in total. The separate sampling job creates all three parameter files. If you change the sample counts, update the job index ranges and the loop in `start.sh` accordingly.
 
 Scripts locate the project using `COSMOCLASS_DIR` first, then `SLURM_SUBMIT_DIR`, or their own directory during ordinary Bash execution. Since Slurm copies job scripts, explicitly set `COSMOCLASS_DIR` when submitting from another directory.
 
@@ -218,11 +209,12 @@ Completed checks include Python/Shell syntax, LHS stratification and reproducibi
 | Symptom | What to check |
 | --- | --- |
 | `No module named classy` | Install the local extension in the active Python environment |
+| `ADDR2LINE: unbound variable` during Conda activation | Use the updated job scripts with `set -eo pipefail` instead of `set -euo pipefail` |
 | Missing `pk_halofit` | Rebuild this project's extension and inspect the printed import path |
 | GCC/OpenBLAS/OpenMP not found during compilation | Check the original cluster paths in Makefile and setup.py |
 | Parameter file not found | Run sampling first; pass `--params-file` when using a custom directory |
 | Invalid sample index range | Ensure `0 <= start < end <= sample count` and check the fixed job partition sizes |
-| Conda or its environment is unavailable | Set `COSMOCLASS_CONDA_BASE` and `COSMOCLASS_CONDA_ENV`; use `COSMOCLASS_CONDA_MODULE` only for an available module |
+| Conda or its environment is unavailable | Ensure Conda is initialized in the job shell and the `multinest` environment exists |
 | CLASS input or numerical error | Inspect the parameters at the failing index; LHS does not guarantee numerical convergence or model validity across the entire parameter range |
 
 When using this self-interacting neutrino branch for research, follow the citation requirements in the [upstream branch documentation](class_public/README.md).

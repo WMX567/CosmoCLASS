@@ -3,8 +3,8 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem-per-cpu=10GB
-#SBATCH --time=30:00:00
-#SBATCH --output=dataGen.out
+#SBATCH --time=48:00:00
+#SBATCH --output=13.out
 
 set -eo pipefail
 if [[ -n "${COSMOCLASS_DIR:-}" ]]; then
@@ -27,4 +27,4 @@ cd -- "$PROJECT_DIR"
 
 conda activate multinest
 
-python lhs_sampling.py
+python call_class.py --start 24000 --end 26000 --params-file dataset/neff_train_param.npz

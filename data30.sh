@@ -2,11 +2,11 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem-per-cpu=2GB
-#SBATCH --time=00:5:00
-#SBATCH --output=start.out
+#SBATCH --mem-per-cpu=10GB
+#SBATCH --time=48:00:00
+#SBATCH --output=30.out
 
-set -euo pipefail
+set -eo pipefail
 if [[ -n "${COSMOCLASS_DIR:-}" ]]; then
     PROJECT_DIR="$COSMOCLASS_DIR"
 elif [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
@@ -25,13 +25,6 @@ export COSMOCLASS_DIR="$PROJECT_DIR"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 cd -- "$PROJECT_DIR"
 
-sbatch --chdir="$PROJECT_DIR" "$PROJECT_DIR/data1.sh"
-sbatch --chdir="$PROJECT_DIR" "$PROJECT_DIR/data2.sh"
-sbatch --chdir="$PROJECT_DIR" "$PROJECT_DIR/data3.sh"
-sbatch --chdir="$PROJECT_DIR" "$PROJECT_DIR/data4.sh"
-sbatch --chdir="$PROJECT_DIR" "$PROJECT_DIR/data5.sh"
-sbatch --chdir="$PROJECT_DIR" "$PROJECT_DIR/data6.sh"
-sbatch --chdir="$PROJECT_DIR" "$PROJECT_DIR/data7.sh"
-sbatch --chdir="$PROJECT_DIR" "$PROJECT_DIR/data8.sh"
-sbatch --chdir="$PROJECT_DIR" "$PROJECT_DIR/data9.sh"
-sbatch --chdir="$PROJECT_DIR" "$PROJECT_DIR/data10.sh"
+conda activate multinest
+
+python call_class.py --start 58000 --end 60000 --params-file dataset/neff_train_param.npz

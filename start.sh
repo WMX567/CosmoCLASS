@@ -2,9 +2,9 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem-per-cpu=10GB
-#SBATCH --time=48:00:00
-#SBATCH --output=8.out
+#SBATCH --mem-per-cpu=2GB
+#SBATCH --time=00:5:00
+#SBATCH --output=start.out
 
 set -euo pipefail
 if [[ -n "${COSMOCLASS_DIR:-}" ]]; then
@@ -25,6 +25,6 @@ export COSMOCLASS_DIR="$PROJECT_DIR"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 cd -- "$PROJECT_DIR"
 
-source "$PROJECT_DIR/scripts/activate_conda.sh"
-
-python call_class.py --start 42000 --end 48000 --params-file dataset/neff_train_param.npz
+for i in {1..30}; do
+    sbatch --chdir="$PROJECT_DIR" "$PROJECT_DIR/data${i}.sh"
+done

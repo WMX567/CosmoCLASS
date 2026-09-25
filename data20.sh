@@ -4,9 +4,9 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem-per-cpu=10GB
 #SBATCH --time=48:00:00
-#SBATCH --output=5.out
+#SBATCH --output=20.out
 
-set -euo pipefail
+set -eo pipefail
 if [[ -n "${COSMOCLASS_DIR:-}" ]]; then
     PROJECT_DIR="$COSMOCLASS_DIR"
 elif [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
@@ -25,6 +25,6 @@ export COSMOCLASS_DIR="$PROJECT_DIR"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 cd -- "$PROJECT_DIR"
 
-source "$PROJECT_DIR/scripts/activate_conda.sh"
+conda activate multinest
 
-python call_class.py --start 24000 --end 30000 --params-file dataset/neff_train_param.npz
+python call_class.py --start 38000 --end 40000 --params-file dataset/neff_train_param.npz

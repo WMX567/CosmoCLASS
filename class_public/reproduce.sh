@@ -6,7 +6,7 @@
 #SBATCH --time=30:00:00
 #SBATCH --output=adam.out
 
-set -euo pipefail
+set -eo pipefail
 if [[ -n "${COSMOCLASS_DIR:-}" ]]; then
     PROJECT_DIR="$COSMOCLASS_DIR"
 elif [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
@@ -25,7 +25,7 @@ export COSMOCLASS_DIR="$PROJECT_DIR"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 cd -- "$PROJECT_DIR"
 
-source "$PROJECT_DIR/scripts/activate_conda.sh"
+conda activate multinest
 
 cd -- "$PROJECT_DIR/class_public"
 python david_test.py
