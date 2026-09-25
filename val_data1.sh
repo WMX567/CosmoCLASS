@@ -28,4 +28,4 @@ cd -- "$PROJECT_DIR"
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate multinest
 
-python call_class.py --start 0 --end 2000 --params-file dataset/neff_val_param.npz --prefix classpt_sinu_halofit_val
+python call_class.py --start 0 --end 2000 --params-file dataset/neff_val_param.npz --prefix classpt_sinu_val

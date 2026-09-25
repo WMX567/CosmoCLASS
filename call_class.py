@@ -12,7 +12,7 @@ PROJECT_DIR = Path(__file__).resolve().parent
 CLASS_DIR = PROJECT_DIR / "class_public"
 
 PARAMS = {
-    "output": "tCl,pCl,lCl,mPk",
+    "output": "tCl,pCl,lCl",
     "lensing": "yes",
 
     "h": 0.6737,
@@ -31,19 +31,15 @@ PARAMS = {
     "interacting_alphal_file": str(CLASS_DIR / "neutrinos_collision_terms/Massless_alpha_l.dat"),
     "gauge": "synchronous",
     "log10_G_eff_nu": -12.0,
-    "non linear": "halofit",
 
     "l_max_scalars": 11000,
-    "P_k_max_1/Mpc": 50.0,
     "accurate_lensing": 1,
     "k_max_tau0_over_l_max": 15.0,
     "perturb_sampling_stepsize": 0.05,
-    "halofit_min_k_max": 100,
 }
 
 DERIVED_NAMES = [
     "100*theta_s",
-    "sigma8",
     "YHe",
     "z_reio",
     "Neff",
@@ -53,13 +49,6 @@ DERIVED_NAMES = [
     "ra_rec",
     "rs_d",
 ]
-
-K_MIN = 1e-4
-K_MAX_OUT = 50.0
-N_K = 500
-
-# Redshifts at which P(k) is evaluated and stored for every sample.
-PK_REDSHIFTS_DEFAULT = [0.0, 2.5, 5.0]
 
 DATA_PARAMETER_MAP = {
     "h": "h",
@@ -74,32 +63,11 @@ DATA_PARAMETER_MAP = {
 }
 
 
-def z_tag(z: float) -> str:
-    return "z" + f"{z:g}".replace(".", "p")
-
-
 def main() -> None:
 
     ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "--pk-redshifts",
-        type=float,
-        nargs="+",
-        default=PK_REDSHIFTS_DEFAULT,
-        help="Redshifts at which P_k_lin and P_k_nl are stored (default: %(default)s)",
-    )
-    ap.add_argument(
-        "--z-max-pk",
-        type=float,
-        default=None,
-        help=(
-            "Upper redshift limit CLASS uses to build the P(k) table "
-            "(class 'z_max_pk'). Must be >= max(--pk-redshifts). "
-            "Defaults to max(--pk-redshifts)."
-        ),
-    )
     ap.add_argument("--out-dir", type=Path, default=PROJECT_DIR / "output")
-    ap.add_argument("--prefix", default="classpt_sinu_halofit")
+    ap.add_argument("--prefix", default="classpt_sinu")
     ap.add_argument("--start", type=int, default=0, help="First run index")
     ap.add_argument("--end", type=int, help="Exclusive final run index (default: all samples)")
     ap.add_argument(
@@ -109,15 +77,6 @@ def main() -> None:
         help="NPZ archive containing sampled cosmological parameters",
     )
     args = ap.parse_args()
-
-    if any(not np.isfinite(z) or z < 0 for z in args.pk_redshifts):
-        ap.error("--pk-redshifts must be finite and nonnegative")
-    pk_redshifts = sorted(set(args.pk_redshifts))
-    z_max_pk = args.z_max_pk if args.z_max_pk is not None else max(pk_redshifts)
-    if not np.isfinite(z_max_pk) or z_max_pk < max(pk_redshifts):
-        ap.error(
-            f"--z-max-pk ({z_max_pk}) must be >= max(--pk-redshifts) ({max(pk_redshifts)})"
-        )
 
     out_dir = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -146,20 +105,8 @@ def main() -> None:
     import classy
     from classy import Class
 
-    if not hasattr(Class, "pk_halofit"):
-        ap.error(
-            f"Loaded classy from {classy.__file__} using {sys.executable}, "
-            "but this extension has no pk_halofit(). In the multinest environment, "
-            "run `cd class_public && make clean && make libclass.a && cd python && "
-            "python setup.py build_ext --inplace --force`. Verify pk_halofit from "
-            "that python directory before resubmitting. "
-            "Both python/classy.pyx and python/cclassy.pxd must be the updated project files."
-        )
-
     version = getattr(classy, "__version__", "unknown (CLASS-PT SInu)")
     print(f"Using classy: {classy.__file__}")
-
-    k = np.logspace(np.log10(K_MIN), np.log10(K_MAX_OUT), N_K)
 
     for run_index in range(args.start, end):
         params = dict(PARAMS)
@@ -167,10 +114,6 @@ def main() -> None:
             class_key: data[data_key][run_index].item()
             for data_key, class_key in DATA_PARAMETER_MAP.items()
         })
-        # z_max_pk only sets how far CLASS builds its internal P(k) table;
-        # the actual redshifts we sample from that table are pk_redshifts.
-        params["z_max_pk"] = z_max_pk
-
         print(f"Computing {run_index + 1}/{end}")
         t0 = time.perf_counter()
         cosmo = Class()
@@ -185,10 +128,6 @@ def main() -> None:
             te = cls["te"][2:]
             pp = cls["pp"][2:] 
         
-            # One P(k) curve per requested redshift, all pulled from the same
-            # z_max_pk table computed above.
-            pk_lin_by_z = {z: np.array([cosmo.pk_lin(ki, z) for ki in k]) for z in pk_redshifts}
-            pk_nl_by_z = {z: np.array([cosmo.pk_halofit(ki, z) for ki in k]) for z in pk_redshifts}
             derived = cosmo.get_current_derived_parameters(DERIVED_NAMES)
 
         finally:
@@ -202,8 +141,6 @@ def main() -> None:
             "classy_module": str(classy.__file__),
             "run": args.prefix,
             "run_index": run_index,
-            "pk_redshifts": pk_redshifts,
-            "z_max_pk": z_max_pk,
             "runtime_s": runtime,
             "params": params,
         }
@@ -232,26 +169,8 @@ def main() -> None:
             meta_json=meta_json,
         )
 
-        pk_paths = []
-        for z in pk_redshifts:
-            pk_path = out_dir / f"{run_tag}_{z_tag(z)}_pk.npz"
-            np.savez_compressed(
-                pk_path,
-                k=k,
-                z=np.array(z),
-                pk_lin=pk_lin_by_z[z],
-                pk_nl=pk_nl_by_z[z],
-                units=np.array(json.dumps(
-                    {"k": "1/Mpc", "pk_lin": "Mpc3", "pk_nl": "Mpc3"}
-                )),
-                meta_json=meta_json,
-            )
-            pk_paths.append(pk_path)
-
-        print(f"version={version}  z_max_pk={z_max_pk}  pk_redshifts={pk_redshifts}  runtime={runtime:.1f}s")
+        print(f"version={version}  runtime={runtime:.1f}s")
         print(f"  {cmb_path}   ell 2..{ell[-1]}")
-        for pk_path, z in zip(pk_paths, pk_redshifts):
-            print(f"  {pk_path}    k {k[0]:.1e}..{k[-1]:g} 1/Mpc, z={z}")
         print(f"  {der_path}")
 
 
