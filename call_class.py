@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -144,7 +145,13 @@ def main() -> None:
     from classy import Class
 
     if not hasattr(Class, "pk_halofit"):
-        ap.error("Rebuild and install class_public/python: this driver requires the local pk_halofit interface")
+        ap.error(
+            f"Loaded classy from {classy.__file__} using {sys.executable}, "
+            "but this extension has no pk_halofit(). In the multinest environment, "
+            "run `cd class_public && make clean && make all`, then verify with "
+            "`python -c 'from classy import Class; assert hasattr(Class, \"pk_halofit\")'`. "
+            "Both python/classy.pyx and python/cclassy.pxd must be the updated project files."
+        )
 
     version = getattr(classy, "__version__", "unknown (CLASS-PT SInu)")
     print(f"Using classy: {classy.__file__}")

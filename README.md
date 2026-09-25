@@ -211,7 +211,7 @@ Completed checks include Python/Shell syntax, LHS stratification and reproducibi
 | --- | --- |
 | `No module named classy` | Install the local extension in the active Python environment |
 | `ADDR2LINE: unbound variable` during Conda activation | Use the updated job scripts with `set -eo pipefail` instead of `set -euo pipefail` |
-| Missing `pk_halofit` | Rebuild this project's extension and inspect the printed import path |
+| Missing `pk_halofit` | In `multinest`, run `make clean` and `make all` from `class_public/`, then verify `hasattr(Class, "pk_halofit")`; the error reports the imported extension and Python executable |
 | GCC/OpenBLAS/OpenMP not found during compilation | Check the original cluster paths in Makefile and setup.py |
 | Parameter file not found | Run sampling first; pass `--params-file` when using a custom directory |
 | Invalid sample index range | Ensure `0 <= start < end <= sample count` and check the fixed job partition sizes |
