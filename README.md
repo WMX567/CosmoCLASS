@@ -41,7 +41,7 @@ Before building, adjust these settings for the target machine:
 | --- | --- |
 | `class_public/Makefile` | `CC`, `OPENBLAS`, `OMPFLAG`, `PYTHON` |
 | `class_public/python/setup.py` | OpenBLAS/OpenMP paths in `library_dirs` and `extra_link_args` |
-| Job scripts in the project root and `class_public/` | Module name and `conda activate multinest` |
+| `scripts/activate_conda.sh` | Conda settings supplied through the environment variables described below |
 
 The current build configuration contains paths under `/home1/mengxiwu/.conda/envs/multinest/` from the original cluster. These paths must be checked on other machines. Compiler, shared-library, and OpenMP configurations also differ between macOS and Linux.
 
@@ -130,7 +130,24 @@ The current configuration uses `l_max_scalars=11000`. Matter spectra are saved a
 
 ## Submit Slurm jobs
 
-The job scripts load the `miniconda-nobashrc` module and activate the `multinest` environment by default. Confirm that this environment contains the local extension before submitting jobs.
+Job scripts use `scripts/activate_conda.sh` to activate `multinest` by default. They do not load a cluster module unless explicitly configured. Confirm that the selected environment contains the local extension.
+
+If Conda is already available through `CONDA_EXE` or `PATH`, no installation path is needed. Otherwise, specify it before submitting:
+
+```bash
+export COSMOCLASS_CONDA_BASE=/path/to/miniconda3
+export COSMOCLASS_CONDA_ENV=multinest
+```
+
+Use the actual Conda installation directory, not an individual environment directory. `COSMOCLASS_CONDA_ENV` accepts an environment name or its full path. On a login node where Conda works, `conda info --base` and `conda env list` show these values.
+
+If the cluster requires a module, find its available name with `module spider` and configure it explicitly:
+
+```bash
+export COSMOCLASS_CONDA_MODULE=actual-module-name
+```
+
+The module is loaded first. Conda is then located using `COSMOCLASS_CONDA_BASE`, `CONDA_EXE`, or `PATH`, in that order. These variables must be exported so Slurm can inherit them; submissions that disable environment export need corresponding explicit settings.
 
 ```bash
 export COSMOCLASS_DIR=/path/to/CosmoCLASS
@@ -205,7 +222,7 @@ Completed checks include Python/Shell syntax, LHS stratification and reproducibi
 | GCC/OpenBLAS/OpenMP not found during compilation | Check the original cluster paths in Makefile and setup.py |
 | Parameter file not found | Run sampling first; pass `--params-file` when using a custom directory |
 | Invalid sample index range | Ensure `0 <= start < end <= sample count` and check the fixed job partition sizes |
-| `module` or `multinest` unavailable | Adapt the job environment configuration to the target cluster |
+| Conda or its environment is unavailable | Set `COSMOCLASS_CONDA_BASE` and `COSMOCLASS_CONDA_ENV`; use `COSMOCLASS_CONDA_MODULE` only for an available module |
 | CLASS input or numerical error | Inspect the parameters at the failing index; LHS does not guarantee numerical convergence or model validity across the entire parameter range |
 
 When using this self-interacting neutrino branch for research, follow the citation requirements in the [upstream branch documentation](class_public/README.md).

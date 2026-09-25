@@ -25,8 +25,6 @@ export COSMOCLASS_DIR="$PROJECT_DIR"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 cd -- "$PROJECT_DIR"
 
-module --ignore-cache load "miniconda-nobashrc"
-eval "$(conda shell.bash hook)"
-conda activate multinest
+source "$PROJECT_DIR/scripts/activate_conda.sh"
 
 python call_class.py --start 0 --end 4000 --params-file dataset/neff_test_param.npz --prefix classpt_sinu_halofit_test

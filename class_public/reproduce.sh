@@ -25,9 +25,7 @@ export COSMOCLASS_DIR="$PROJECT_DIR"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 cd -- "$PROJECT_DIR"
 
-module --ignore-cache load "miniconda-nobashrc"
-eval "$(conda shell.bash hook)"
-conda activate multinest
+source "$PROJECT_DIR/scripts/activate_conda.sh"
 
 cd -- "$PROJECT_DIR/class_public"
 python david_test.py
