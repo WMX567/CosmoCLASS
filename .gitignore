@@ -1,0 +1,29 @@
+# Local backup of the former nested repository metadata
+/.local-git-backups/
+
+# Python and platform caches
+__pycache__/
+*.py[cod]
+.DS_Store
+
+# Generated datasets and computation output
+dataset/
+output/
+*.out
+*.log
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+*.o
+*.a
+*.so
+*.dylib
+/class_public/class
+/class_public/python/classy.c
+/class_public/python/autosetup.py
+
+# Generated documentation
+/class_public/doc/manual/
