@@ -41,7 +41,7 @@ Before building, adjust these settings for the target machine:
 | --- | --- |
 | `class_public/Makefile` | `CC`, `OPENBLAS`, `OMPFLAG`, `PYTHON` |
 | `class_public/python/setup.py` | OpenBLAS/OpenMP paths in `library_dirs` and `extra_link_args` |
-| Job scripts | `conda activate multinest`; Conda must already be initialized in the job shell |
+| Job scripts | Load `conda.sh`, then run `conda activate multinest` |
 
 The current build configuration contains paths under `/home1/mengxiwu/.conda/envs/multinest/` from the original cluster. These paths must be checked on other machines. Compiler, shared-library, and OpenMP configurations also differ between macOS and Linux.
 
@@ -130,13 +130,14 @@ The current configuration uses `l_max_scalars=11000`. Matter spectra are saved a
 
 ## Submit Slurm jobs
 
-Job scripts activate the environment directly:
+Job scripts initialize Conda in the job shell and activate the environment:
 
 ```bash
+source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate multinest
 ```
 
-Conda must already be initialized in the job shell, and `multinest` must contain the local CLASS extension. The scripts use `set -eo pipefail`, without `set -u`, to allow Conda compiler activation hooks to read unset variables.
+The `conda` command must be available on `PATH`, and `multinest` must contain the local CLASS extension. Each job loads the initialization script explicitly, so it does not depend on the batch shell reading an interactive shell configuration. The scripts use `set -eo pipefail`, without `set -u`, to allow Conda compiler activation hooks to read unset variables.
 
 ```bash
 export COSMOCLASS_DIR=/path/to/CosmoCLASS
@@ -214,7 +215,8 @@ Completed checks include Python/Shell syntax, LHS stratification and reproducibi
 | GCC/OpenBLAS/OpenMP not found during compilation | Check the original cluster paths in Makefile and setup.py |
 | Parameter file not found | Run sampling first; pass `--params-file` when using a custom directory |
 | Invalid sample index range | Ensure `0 <= start < end <= sample count` and check the fixed job partition sizes |
-| Conda or its environment is unavailable | Ensure Conda is initialized in the job shell and the `multinest` environment exists |
+| Conda or its environment is unavailable | Ensure `conda` is on `PATH` and the `multinest` environment exists |
+| Shell not configured for `conda activate` | Use the updated scripts, which source `$(conda info --base)/etc/profile.d/conda.sh` before activation |
 | CLASS input or numerical error | Inspect the parameters at the failing index; LHS does not guarantee numerical convergence or model validity across the entire parameter range |
 
 When using this self-interacting neutrino branch for research, follow the citation requirements in the [upstream branch documentation](class_public/README.md).

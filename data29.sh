@@ -25,6 +25,7 @@ export COSMOCLASS_DIR="$PROJECT_DIR"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 cd -- "$PROJECT_DIR"
 
+source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate multinest
 
 python call_class.py --start 56000 --end 58000 --params-file dataset/neff_train_param.npz

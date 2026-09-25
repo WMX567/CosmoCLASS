@@ -25,6 +25,7 @@ export COSMOCLASS_DIR="$PROJECT_DIR"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 cd -- "$PROJECT_DIR"
 
+source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate multinest
 
 python call_class.py --start 2000 --end 4000 --params-file dataset/neff_val_param.npz --prefix classpt_sinu_halofit_val
