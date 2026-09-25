@@ -152,6 +152,18 @@ sbatch "$COSMOCLASS_DIR/val_data1.sh"
 sbatch "$COSMOCLASS_DIR/val_data2.sh"
 ```
 
+Spectrum jobs request `--mem=32G` per node and run Python with unbuffered output (`python -u`). This is an increased starting allocation after a 10 GB job was OOM-killed, not a measured guarantee that 32 GB is sufficient. Precision settings are unchanged. First submit one job and inspect its memory usage before launching all thirty.
+
+The driver logs the zero-based sample index before computation and process lifetime peak RSS in MiB after CLASS returns. This peak is cumulative across samples, not current memory usage or an individual sample's allocation. An OOM kill may occur before the completion log is written.
+
+To inspect a failed or completed job (replace the job ID):
+
+```bash
+sacct -j 12356838 --format=JobID,State,ReqMem,MaxRSS,Elapsed
+```
+
+`MaxRSS` reports the largest recorded task RSS for a step; availability depends on cluster accounting. See the [Slurm sacct documentation](https://slurm.schedmd.com/sacct.html). Samples are computed sequentially: reducing the 2000-sample batch size does not by itself reduce the memory needed for one sample.
+
 `start.sh` submits only the training jobs. It does not wait for sampling or submit the test and validation jobs.
 
 Training script `dataN.sh` processes indices `[2000 × (N−1), 2000 × N)`. The thirty jobs cover all 60000 training samples without gaps or overlap. Each of the test and validation splits uses two jobs covering `[0, 2000)` and `[2000, 4000)`, with prefixes `classpt_sinu_test` and `classpt_sinu_val`, respectively. There are 34 spectrum-computation jobs in total. The separate sampling job creates all three parameter files. If you change the sample counts, update the job index ranges and the loop in `start.sh` accordingly.
@@ -208,6 +220,7 @@ Completed checks include Python/Shell syntax, LHS stratification and reproducibi
 | `No module named classy` | Install the local extension in the active Python environment |
 | `ADDR2LINE: unbound variable` during Conda activation | Use the updated job scripts with `set -eo pipefail` instead of `set -euo pipefail` |
 | GCC/OpenBLAS/OpenMP not found during compilation | Check the original cluster paths in Makefile and setup.py |
+| Slurm reports `oom_kill` | Inspect the failing sample index and `sacct` memory records; the 32 GB request may need adjustment. Keep precision changes separate from memory-allocation changes |
 | Parameter file not found | Run sampling first; pass `--params-file` when using a custom directory |
 | Invalid sample index range | Ensure `0 <= start < end <= sample count` and check the fixed job partition sizes |
 | Conda or its environment is unavailable | Ensure `conda` is on `PATH` and the `multinest` environment exists |

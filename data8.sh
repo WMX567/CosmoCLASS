@@ -2,7 +2,7 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem-per-cpu=10GB
+#SBATCH --mem=32G
 #SBATCH --time=48:00:00
 #SBATCH --output=8.out
 
@@ -28,4 +28,4 @@ cd -- "$PROJECT_DIR"
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate multinest
 
-python call_class.py --start 14000 --end 16000 --params-file dataset/neff_train_param.npz
+python -u call_class.py --start 14000 --end 16000 --params-file dataset/neff_train_param.npz

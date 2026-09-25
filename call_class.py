@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import resource
 import sys
 import time
 from pathlib import Path
@@ -63,6 +64,12 @@ DATA_PARAMETER_MAP = {
 }
 
 
+def peak_rss_mib() -> float:
+    """Process lifetime peak RSS: bytes on macOS, KiB on Linux."""
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return peak / (1024 ** 2 if sys.platform == "darwin" else 1024)
+
+
 def main() -> None:
 
     ap = argparse.ArgumentParser()
@@ -106,7 +113,7 @@ def main() -> None:
     from classy import Class
 
     version = getattr(classy, "__version__", "unknown (CLASS-PT SInu)")
-    print(f"Using classy: {classy.__file__}")
+    print(f"Using classy: {classy.__file__}", flush=True)
 
     for run_index in range(args.start, end):
         params = dict(PARAMS)
@@ -114,12 +121,15 @@ def main() -> None:
             class_key: data[data_key][run_index].item()
             for data_key, class_key in DATA_PARAMETER_MAP.items()
         })
-        print(f"Computing {run_index + 1}/{end}")
+        print(f"Computing index={run_index} ({run_index + 1}/{end}); "
+              f"process_peak_rss_mib={peak_rss_mib():.1f}", flush=True)
         t0 = time.perf_counter()
         cosmo = Class()
         try:
             cosmo.set(params)
             cosmo.compute()
+            print(f"CLASS compute finished: index={run_index}; "
+                  f"process_peak_rss_mib={peak_rss_mib():.1f}", flush=True)
 
             cls = cosmo.lensed_cl(params["l_max_scalars"])
             ell = np.asarray(cls["ell"][2:], dtype=int)
@@ -142,6 +152,7 @@ def main() -> None:
             "run": args.prefix,
             "run_index": run_index,
             "runtime_s": runtime,
+            "process_peak_rss_mib": peak_rss_mib(),
             "params": params,
         }
         meta_json = np.array(json.dumps(meta))
@@ -169,7 +180,8 @@ def main() -> None:
             meta_json=meta_json,
         )
 
-        print(f"version={version}  runtime={runtime:.1f}s")
+        print(f"version={version}  runtime={runtime:.1f}s  "
+              f"process_peak_rss_mib={peak_rss_mib():.1f}", flush=True)
         print(f"  {cmb_path}   ell 2..{ell[-1]}")
         print(f"  {der_path}")
 
