@@ -209,7 +209,7 @@ with np.load(path, allow_pickle=False) as data:
 
 CMB outputs are not converted to D_l or μK². To obtain TT/EE/TE D_l in μK², use `ell * (ell + 1) / (2 * np.pi) * C_l * (2.7255e6)**2`. This conversion does not apply to `pp`.
 
-68000 samples produce 136000 result files. Existing P(k) files from previous runs are not deleted. The new `classpt_sinu` prefix separates these CMB results from previous Halofit runs. Rerunning with the same output directory, prefix, and sample index overwrites matching files. A computation failure terminates the current job; failed samples and existing results are not skipped automatically.
+68000 samples produce 136000 result files. Existing P(k) files from previous runs are not deleted. The new `classpt_sinu` prefix separates these CMB results from previous Halofit runs. Without `--resume`, rerunning overwrites matching output files. All 34 spectrum job scripts now pass `--resume`: readable output pairs with matching saved parameters are skipped. Missing, unreadable, partial, or parameter-mismatched pairs are recomputed. A computation failure still terminates the current job.
 
 ## Validation status and troubleshooting
 
@@ -228,3 +228,50 @@ Completed checks include Python/Shell syntax, LHS stratification and reproducibi
 | CLASS input or numerical error | Inspect the parameters at the failing index; LHS does not guarantee numerical convergence or model validity across the entire parameter range |
 
 When using this self-interacting neutrino branch for research, follow the citation requirements in the [upstream branch documentation](class_public/README.md).
+
+## Count samples and continue a run
+
+Run the status check on the machine containing your parameter and output files:
+
+```bash
+python job_status.py
+# Check only selected jobs:
+python job_status.py data1.sh data2.sh
+```
+
+For each script, this reads the current `--start`, `--end`, `--params-file`,
+`--out-dir`, and `--prefix`. `Done` counts samples with both readable NPZ files
+and matching parameters; `Pending` includes absent, partial, corrupt, or
+parameter-mismatched outputs. `First pending` is a zero-based index. The check
+reads both archives for every sample, so a full scan may take time. Totals sum
+job ranges; overlapping ranges are counted more than once. Run after jobs stop
+for a stable count. Literal command arguments are supported, not shell variables
+or dynamically constructed commands.
+
+To fill unfinished samples, keep the parameter NPZ files and rerun:
+
+```bash
+bash start.sh                 # all training jobs, skipping completed samples
+# Or submit just one edited script:
+sbatch --chdir="$PWD" data1.sh
+```
+
+You can directly edit the ranges or Slurm time/memory settings in `data*.sh`.
+Keep `--resume` to preserve matching completed samples, including those after
+holes in the output. No need to manually advance `--start`. Do not submit
+concurrent jobs with overlapping output indices. An unchanged numerical failure
+can recur at the same index; inspect that job's log before retrying.
+
+For an independent new batch, use a new parameter directory and output directory
+and a different seed, for example:
+
+```bash
+python lhs_sampling.py --seed 43 --out-dir dataset/round2
+```
+
+Then edit each relevant job's Python command to use
+`--params-file dataset/round2/neff_train_param.npz --out-dir output/round2`
+(or the corresponding test/validation parameter file), keeping the appropriate
+index ranges, and submit again. Do not rerun the sampling generator over the
+first round's parameter files when continuing that round. The status report
+always describes the current commands in the scripts.

@@ -28,4 +28,4 @@ cd -- "$PROJECT_DIR"
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate multinest
 
-python -u call_class.py --start 24000 --end 26000 --params-file dataset/neff_train_param.npz
+python -u call_class.py --resume --start 24000 --end 26000 --params-file dataset/neff_train_param.npz

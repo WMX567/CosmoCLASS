@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+from sample_status import sample_complete
 
 PROJECT_DIR = Path(__file__).resolve().parent
 CLASS_DIR = PROJECT_DIR / "class_public"
@@ -75,6 +76,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out-dir", type=Path, default=PROJECT_DIR / "output")
     ap.add_argument("--prefix", default="classpt_sinu")
+    ap.add_argument("--resume", action="store_true",
+                    help="Skip readable output pairs whose saved parameters match")
     ap.add_argument("--start", type=int, default=0, help="First run index")
     ap.add_argument("--end", type=int, help="Exclusive final run index (default: all samples)")
     ap.add_argument(
@@ -121,6 +124,9 @@ def main() -> None:
             class_key: data[data_key][run_index].item()
             for data_key, class_key in DATA_PARAMETER_MAP.items()
         })
+        if args.resume and sample_complete(out_dir, args.prefix, run_index, params):
+            print(f"Skipping completed index={run_index}", flush=True)
+            continue
         print(f"Computing index={run_index} ({run_index + 1}/{end}); "
               f"process_peak_rss_mib={peak_rss_mib():.1f}", flush=True)
         t0 = time.perf_counter()
