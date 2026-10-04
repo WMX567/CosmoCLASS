@@ -17,7 +17,7 @@ fi
 if [[ ! -d "$PROJECT_DIR/class_public" && -d "$PROJECT_DIR/../class_public" ]]; then
     PROJECT_DIR="$(cd -- "$PROJECT_DIR/.." && pwd)"
 fi
-if [[ ! -f "$PROJECT_DIR/call_class.py" || ! -d "$PROJECT_DIR/class_public" ]]; then
+if [[ ! -f "$PROJECT_DIR/call_class.py" || ! -f "$PROJECT_DIR/call_class_pk.py" || ! -d "$PROJECT_DIR/class_public" ]]; then
     echo "Set COSMOCLASS_DIR to the CosmoCLASS project root before submission." >&2
     exit 1
 fi
@@ -28,4 +28,4 @@ cd -- "$PROJECT_DIR"
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate multinest
 
-python -u call_class.py --resume --start 20000 --end 22000 --params-file dataset/neff_train_param.npz
+python -u call_class_pk.py --resume --start 20000 --end 22000 --params-file dataset/neff_train_param.npz
