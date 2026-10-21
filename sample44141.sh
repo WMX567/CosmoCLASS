@@ -28,6 +28,22 @@ cd -- "$PROJECT_DIR"
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate multinest
 
+python - <<'PY'
+from pathlib import Path
+import numpy as np
+from lhs_sampling import PARAM_RANGES, perform_lhs_sampling
+
+path = Path("dataset/replacement_44141/params.npz")
+if path.exists():
+    print(f"Reusing parameters: {path}", flush=True)
+else:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    samples = perform_lhs_sampling(PARAM_RANGES, 1, seed=44141)
+    with path.open("xb") as handle:
+        np.savez_compressed(handle, **samples)
+    print(f"Generated parameters (seed=44141): {path}", flush=True)
+PY
+
 python -u call_class.py --resume --start 0 --end 1 --index-offset 44141 \
     --params-file dataset/replacement_44141/params.npz \
     --out-dir output/replacement_44141
