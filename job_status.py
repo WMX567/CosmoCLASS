@@ -7,25 +7,35 @@ from pathlib import Path
 import numpy as np
 
 from call_class import DATA_PARAMETER_MAP, PARAMS, PROJECT_DIR
+from call_class_pk import PARAMS as PK_PARAMS, pk_sample_complete, z_tag
 from sample_status import sample_complete
 
 
 def job_options(path):
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(exit_on_error=False)
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--end", type=int)
     parser.add_argument("--params-file", default="dataset/neff_train_param.npz")
     parser.add_argument("--out-dir", default="output")
     parser.add_argument("--prefix", default="classpt_sinu")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--index-offset", type=int, default=0)
+    parser.add_argument("--pk-z", type=float, nargs="+", default=[0.0])
     commands = []
     for line in path.read_text().replace("\\\n", " ").splitlines():
         tokens = shlex.split(line, comments=True)
-        if "call_class.py" in tokens:
-            commands.append(tokens[tokens.index("call_class.py") + 1:])
+        if not tokens or not re.fullmatch(r"python(?:\d+(?:\.\d+)?)?", Path(tokens[0]).name):
+            continue
+        for position, token in enumerate(tokens):
+            if Path(token).name in ("call_class.py", "call_class_pk.py"):
+                commands.append((Path(token).name, tokens[position + 1:]))
     if len(commands) != 1:
-        raise ValueError("expected one call_class.py command")
-    options = parser.parse_args(commands[0])
+        raise ValueError("expected one call_class.py or call_class_pk.py command")
+    driver, command = commands[0]
+    options, unknown = parser.parse_known_args(command)
+    if unknown:
+        raise ValueError(f"unsupported command arguments: {unknown}")
+    options.driver = driver
     if any("$" in value for value in (options.params_file, options.out_dir, options.prefix)):
         raise ValueError("use literal paths/prefix in the Python command")
     return options
@@ -65,18 +75,28 @@ def main():
             done = 0
             first = "-"
             for index in range(options.start, end):
-                params = dict(PARAMS)
+                output_index = index + options.index_offset
+                params = dict(PK_PARAMS if options.driver == "call_class_pk.py" else PARAMS)
                 params.update({target: data[source][index].item()
                                for source, target in DATA_PARAMETER_MAP.items()})
-                if sample_complete(root / options.out_dir, options.prefix, index, params):
+                if options.driver == "call_class_pk.py":
+                    if max(options.pk_z) > 0:
+                        params["z_max_pk"] = max(options.pk_z)
+                    complete = all(pk_sample_complete(
+                        root / options.out_dir / f"{options.prefix}_{output_index:05d}_pk_{z_tag(z)}.npz",
+                        output_index, options.prefix, params, z,
+                    ) for z in options.pk_z)
+                else:
+                    complete = sample_complete(root / options.out_dir, options.prefix, output_index, params)
+                if complete:
                     done += 1
                 elif first == "-":
-                    first = str(index)
+                    first = str(output_index)
             total = end - options.start
             totals[0] += total
             totals[1] += done
             print(f"{script.name:<20} {f'[{options.start},{end})':<16} {total:>7} {done:>7} {total-done:>8} {first:>14}", flush=True)
-        except (OSError, ValueError, KeyError) as exc:
+        except (OSError, ValueError, KeyError, argparse.ArgumentError) as exc:
             errors += 1
             print(f"{script.name}: ERROR: {exc}", flush=True)
     print(f"Job totals: expected={totals[0]}, done={totals[1]}, pending={totals[0]-totals[1]}, errors={errors}")
