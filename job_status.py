@@ -1,4 +1,4 @@
-"""Report completed samples for each data job, using its current command line."""
+"""Check call_class.py CMB/derived outputs using ranges from the job scripts."""
 import argparse
 import re
 import shlex
@@ -7,7 +7,6 @@ from pathlib import Path
 import numpy as np
 
 from call_class import DATA_PARAMETER_MAP, PARAMS, PROJECT_DIR
-from call_class_pk import PARAMS as PK_PARAMS, pk_sample_complete, z_tag
 from sample_status import sample_complete
 
 
@@ -51,8 +50,8 @@ def main():
     parser.add_argument("scripts", nargs="*", type=Path,
                         help="Default: data[0-9]*.sh, test_data*.sh, val_data*.sh")
     parser.add_argument("--project-dir", type=Path, default=PROJECT_DIR)
-    parser.add_argument("--kind", choices=("script", "cmb", "pk"), default="script",
-                        help="Output type to check (default: follow each job's current driver)")
+    parser.add_argument("--kind", choices=("cmb",), default="cmb",
+                        help="Check call_class.py CMB/derived outputs (default: cmb)")
     parser.add_argument("--out-dir", type=Path,
                         help="Override all jobs' output directory, relative to project root")
     args = parser.parse_args()
@@ -71,12 +70,10 @@ def main():
     for script in scripts:
         try:
             options = job_options(script)
-            if args.kind != "script":
-                options.driver = "call_class.py" if args.kind == "cmb" else "call_class_pk.py"
             if args.out_dir is not None:
                 options.out_dir = str(args.out_dir)
             print(f"Checking {script.name}: "
-                  f"{'CMB' if options.driver == 'call_class.py' else 'P(k)'} in "
+                  f"CMB/derived in "
                   f"{root / options.out_dir}", flush=True)
             params_path = root / options.params_file
             if params_path not in cache:
@@ -94,18 +91,10 @@ def main():
             first = "-"
             for index in range(options.start, end):
                 output_index = index + options.index_offset
-                params = dict(PK_PARAMS if options.driver == "call_class_pk.py" else PARAMS)
+                params = dict(PARAMS)
                 params.update({target: data[source][index].item()
                                for source, target in DATA_PARAMETER_MAP.items()})
-                if options.driver == "call_class_pk.py":
-                    if max(options.pk_z) > 0:
-                        params["z_max_pk"] = max(options.pk_z)
-                    complete = all(pk_sample_complete(
-                        root / options.out_dir / f"{options.prefix}_{output_index:05d}_pk_{z_tag(z)}.npz",
-                        output_index, options.prefix, params, z,
-                    ) for z in options.pk_z)
-                else:
-                    complete = sample_complete(root / options.out_dir, options.prefix, output_index, params)
+                complete = sample_complete(root / options.out_dir, options.prefix, output_index, params)
                 if complete:
                     done += 1
                 elif first == "-":
