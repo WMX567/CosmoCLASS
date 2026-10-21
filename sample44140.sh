@@ -4,7 +4,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=32G
 #SBATCH --time=48:00:00
-#SBATCH --output=replacement_44141.out
+#SBATCH --output=replacement_44140.out
 
 set -eo pipefail
 if [[ -n "${COSMOCLASS_DIR:-}" ]]; then
@@ -33,7 +33,7 @@ from pathlib import Path
 import numpy as np
 from lhs_sampling import PARAM_RANGES, perform_lhs_sampling
 
-path = Path("dataset/replacement_44141/params.npz")
+path = Path("dataset/replacement_44140/params.npz")
 if path.exists():
     print(f"Reusing parameters: {path}", flush=True)
 else:
@@ -44,6 +44,6 @@ else:
     print(f"Generated parameters (seed=44141): {path}", flush=True)
 PY
 
-python -u call_class.py --resume --start 0 --end 1 --index-offset 44141 \
-    --params-file dataset/replacement_44141/params.npz \
-    --out-dir output/replacement_44141
+python -u call_class.py --resume --start 0 --end 1 --index-offset 44140 \
+    --params-file dataset/replacement_44140/params.npz \
+    --out-dir output/replacement_44140
