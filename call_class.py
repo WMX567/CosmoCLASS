@@ -76,6 +76,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out-dir", type=Path, default=PROJECT_DIR / "output")
     ap.add_argument("--prefix", default="classpt_sinu")
+    ap.add_argument("--index-offset", type=int, default=0,
+                    help="Offset added to sample indices in output names and metadata")
     ap.add_argument("--resume", action="store_true",
                     help="Skip readable output pairs whose saved parameters match")
     ap.add_argument("--start", type=int, default=0, help="First run index")
@@ -118,16 +120,17 @@ def main() -> None:
     version = getattr(classy, "__version__", "unknown (CLASS-PT SInu)")
     print(f"Using classy: {classy.__file__}", flush=True)
 
-    for run_index in range(args.start, end):
+    for sample_index in range(args.start, end):
+        run_index = sample_index + args.index_offset
         params = dict(PARAMS)
         params.update({
-            class_key: data[data_key][run_index].item()
+            class_key: data[data_key][sample_index].item()
             for data_key, class_key in DATA_PARAMETER_MAP.items()
         })
         if args.resume and sample_complete(out_dir, args.prefix, run_index, params):
             print(f"Skipping completed index={run_index}", flush=True)
             continue
-        print(f"Computing index={run_index} ({run_index + 1}/{end}); "
+        print(f"Computing index={run_index} ({sample_index - args.start + 1}/{end - args.start}); "
               f"process_peak_rss_mib={peak_rss_mib():.1f}", flush=True)
         t0 = time.perf_counter()
         cosmo = Class()
