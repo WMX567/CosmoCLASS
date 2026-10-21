@@ -4,7 +4,9 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=32G
 #SBATCH --time=48:00:00
-#SBATCH --output=23.out
+#SBATCH --output=23_%j.out
+#SBATCH --error=23_%j.err
+#SBATCH --open-mode=append
 
 set -eo pipefail
 if [[ -n "${COSMOCLASS_DIR:-}" ]]; then
