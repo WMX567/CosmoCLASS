@@ -51,8 +51,14 @@ def main():
     parser.add_argument("scripts", nargs="*", type=Path,
                         help="Default: data[0-9]*.sh, test_data*.sh, val_data*.sh")
     parser.add_argument("--project-dir", type=Path, default=PROJECT_DIR)
+    parser.add_argument("--kind", choices=("script", "cmb", "pk"), default="script",
+                        help="Output type to check (default: follow each job's current driver)")
+    parser.add_argument("--out-dir", type=Path,
+                        help="Override all jobs' output directory, relative to project root")
     args = parser.parse_args()
     root = args.project_dir.resolve()
+    print(f"Project: {root}; output type: {args.kind}; "
+          f"output directory: {args.out_dir if args.out_dir is not None else 'from each script'}", flush=True)
     scripts = args.scripts or sorted(
         [p for p in root.glob("*.sh")
          if re.fullmatch(r"(?:test_|val_)?data\d+\.sh", p.name)],
@@ -65,6 +71,13 @@ def main():
     for script in scripts:
         try:
             options = job_options(script)
+            if args.kind != "script":
+                options.driver = "call_class.py" if args.kind == "cmb" else "call_class_pk.py"
+            if args.out_dir is not None:
+                options.out_dir = str(args.out_dir)
+            print(f"Checking {script.name}: "
+                  f"{'CMB' if options.driver == 'call_class.py' else 'P(k)'} in "
+                  f"{root / options.out_dir}", flush=True)
             params_path = root / options.params_file
             if params_path not in cache:
                 with np.load(params_path, allow_pickle=False) as archive:
