@@ -11,8 +11,13 @@ from call_class_pk import PARAMS as PK_PARAMS, pk_sample_complete, z_tag
 from sample_status import sample_complete
 
 
+class JobArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        raise ValueError(message)
+
+
 def job_options(path):
-    parser = argparse.ArgumentParser(exit_on_error=False)
+    parser = JobArgumentParser()
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--end", type=int)
     parser.add_argument("--params-file", default="dataset/neff_train_param.npz")
