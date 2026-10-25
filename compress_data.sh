@@ -1,12 +1,25 @@
 #!/usr/bin/env bash
-# Usage: bash compress_data.sh [archive_prefix]
+# Usage: bash compress_data.sh [--split train|test|val|all] [archive_prefix]
 # Run after data-generation jobs finish so the archive contains stable files.
 set -euo pipefail
 
+SPLIT_SELECTION=all
+if [[ "${1:-}" == "--split" ]]; then
+    SPLIT_SELECTION="${2:-}"
+    case "$SPLIT_SELECTION" in
+        train|test|val|all) shift 2 ;;
+        *) echo "Error: --split requires train, test, val, or all." >&2; exit 1 ;;
+    esac
+fi
 if [[ $# -gt 1 || "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-    echo "Usage: bash compress_data.sh [archive_prefix]"
-    echo "Create separate train/test/val archives with matching outputs and parameter files."
+    echo "Usage: bash compress_data.sh [--split train|test|val|all] [archive_prefix]"
+    echo "Create archives with matching outputs and parameter files (default: all splits)."
     exit 0
+fi
+if [[ "$SPLIT_SELECTION" == all ]]; then
+    SPLITS=(train test val)
+else
+    SPLITS=("$SPLIT_SELECTION")
 fi
 
 PROJECT_DIR="${COSMOCLASS_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
@@ -29,7 +42,7 @@ esac
 # Prepare all file lists and check destinations before creating any archives.
 TEMP_DIR="$(mktemp -d "$ARCHIVE_DIR/.cosmoclass_archives.XXXXXX")"
 trap 'rm -rf -- "$TEMP_DIR"' EXIT
-for SPLIT in train test val; do
+for SPLIT in "${SPLITS[@]}"; do
     DESTINATION="${ARCHIVE}_${SPLIT}.tar.gz"
     if [[ -e "$DESTINATION" || -L "$DESTINATION" ]]; then
         echo "Error: archive already exists: $DESTINATION" >&2
@@ -53,7 +66,7 @@ for SPLIT in train test val; do
     printf '%s\0' "$PARAMS_FILE" >> "$TEMP_DIR/$SPLIT.list"
 done
 
-for SPLIT in train test val; do
+for SPLIT in "${SPLITS[@]}"; do
     DESTINATION="${ARCHIVE}_${SPLIT}.tar.gz"
     echo "Compressing $SPLIT..."
     tar -czf "$TEMP_DIR/$SPLIT.tar.gz" --null -T "$TEMP_DIR/$SPLIT.list"
