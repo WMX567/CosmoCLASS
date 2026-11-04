@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+#SBATCH --time=24:00:00
+
 # Usage: bash compress_data.sh [--split train|test|val|all] [archive_prefix]
 # Run after data-generation jobs finish so the archive contains stable files.
 set -euo pipefail
