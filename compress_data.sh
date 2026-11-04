@@ -22,7 +22,14 @@ else
     SPLITS=("$SPLIT_SELECTION")
 fi
 
-PROJECT_DIR="${COSMOCLASS_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
+# Slurm runs a copied script from its spool directory.
+if [[ -n "${COSMOCLASS_DIR:-}" ]]; then
+    PROJECT_DIR="$COSMOCLASS_DIR"
+elif [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
+    PROJECT_DIR="$SLURM_SUBMIT_DIR"
+else
+    PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+fi
 cd -- "$PROJECT_DIR"
 ARCHIVE="${1:-cosmoclass_data_$(date +%Y%m%d_%H%M%S)}"
 ARCHIVE="${ARCHIVE%.tar.gz}"
@@ -30,6 +37,7 @@ ARCHIVE="${ARCHIVE%.zip}"
 
 if [[ ! -d output ]]; then
     echo "Error: output/ does not exist in $PWD." >&2
+    echo "Set COSMOCLASS_DIR to the project directory containing output/ and dataset/ before submission." >&2
     exit 1
 fi
 ARCHIVE_DIR="$(cd -- "$(dirname -- "$ARCHIVE")" && pwd)"
