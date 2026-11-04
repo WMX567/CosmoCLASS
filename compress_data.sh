@@ -13,7 +13,7 @@ if [[ "${1:-}" == "--split" ]]; then
 fi
 if [[ $# -gt 1 || "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
     echo "Usage: bash compress_data.sh [--split train|test|val|all] [archive_prefix]"
-    echo "Create archives with matching outputs and parameter files (default: all splits)."
+    echo "Create ZIP archives with matching outputs and parameter files (default: all splits)."
     exit 0
 fi
 if [[ "$SPLIT_SELECTION" == all ]]; then
@@ -26,6 +26,7 @@ PROJECT_DIR="${COSMOCLASS_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pw
 cd -- "$PROJECT_DIR"
 ARCHIVE="${1:-cosmoclass_data_$(date +%Y%m%d_%H%M%S)}"
 ARCHIVE="${ARCHIVE%.tar.gz}"
+ARCHIVE="${ARCHIVE%.zip}"
 
 if [[ ! -d output ]]; then
     echo "Error: output/ does not exist in $PWD." >&2
@@ -43,7 +44,7 @@ esac
 TEMP_DIR="$(mktemp -d "$ARCHIVE_DIR/.cosmoclass_archives.XXXXXX")"
 trap 'rm -rf -- "$TEMP_DIR"' EXIT
 for SPLIT in "${SPLITS[@]}"; do
-    DESTINATION="${ARCHIVE}_${SPLIT}.tar.gz"
+    DESTINATION="${ARCHIVE}_${SPLIT}.zip"
     if [[ -e "$DESTINATION" || -L "$DESTINATION" ]]; then
         echo "Error: archive already exists: $DESTINATION" >&2
         exit 1
@@ -67,11 +68,23 @@ for SPLIT in "${SPLITS[@]}"; do
 done
 
 for SPLIT in "${SPLITS[@]}"; do
-    DESTINATION="${ARCHIVE}_${SPLIT}.tar.gz"
+    DESTINATION="${ARCHIVE}_${SPLIT}.zip"
     echo "Compressing $SPLIT..."
-    tar -czf "$TEMP_DIR/$SPLIT.tar.gz" --null -T "$TEMP_DIR/$SPLIT.list"
+    python3 - "$TEMP_DIR/$SPLIT.list" "$TEMP_DIR/$SPLIT.zip" <<'PY'
+import os
+import sys
+import zipfile
+
+with open(sys.argv[1], "rb") as manifest:
+    paths = manifest.read().split(b"\0")
+with zipfile.ZipFile(sys.argv[2], "x", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as archive:
+    for path in paths:
+        if path:
+            name = os.fsdecode(path)
+            archive.write(name, arcname=name)
+PY
     # Publish only a completed archive; never overwrite an existing destination.
-    ln -- "$TEMP_DIR/$SPLIT.tar.gz" "$DESTINATION"
+    ln -- "$TEMP_DIR/$SPLIT.zip" "$DESTINATION"
     echo "Archive created: $DESTINATION"
     du -h "$DESTINATION"
 done
