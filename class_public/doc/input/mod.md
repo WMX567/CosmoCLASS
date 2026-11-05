@@ -20,7 +20,7 @@ Generating a new version of this manual is straightforward. First, you need to i
 
 Once installed, navigate to the class/doc/input directory and run the first script
 
-` . make1.sh`
+`bash ../../../scripts/make1.sh`
 
 This will generate a new version of the html manual and the necessary files to make the pdf version. Unfortunately, `doxygen` does not yet offer the option to automatically order the output chapters in the pdf version of the manual. Hence, before compiling the pdf, this must be done manually. To do this you need to find the `refman.tex` file in class/doc/manual/latex. With this file you can modify the title page, headers, footers, and chapter ordering for the final pdf. Usually we just make two things: add manually the line
 
@@ -33,7 +33,7 @@ after
 
 and move manually the chapters `"The external Pk mode"` and `"Updating the manual"` to the end, after the automatically generated part. Once you have this file with your desired configuration, navigate back to the class/doc/input directory, and run the second script
 
-` . make2.sh`
+`bash ../../../scripts/make2.sh`
 
 You should now be able to find the finished pdf in `class/doc/manual/CLASS_MANUAL.pdf`. Finally you can commit the changes to git, but not all the content of `doc/` is necessary: only `doc/README`, `doc/input/`, `doc/manual/CLASS_MANUAL.pdf`, `doc/manual/html/`. This means that before committing you will have to do a: `git add doc/manual/html/`, but NOT a: `git add doc/manual/latex/`!
 

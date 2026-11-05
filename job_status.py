@@ -48,7 +48,7 @@ def job_options(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("scripts", nargs="*", type=Path,
-                        help="Default: data[0-9]*.sh, test_data*.sh, val_data*.sh")
+                        help="Default: scripts/data[0-9]*.sh, scripts/test_data*.sh, scripts/val_data*.sh")
     parser.add_argument("--project-dir", type=Path, default=PROJECT_DIR)
     parser.add_argument("--kind", choices=("cmb",), default="cmb",
                         help="Check call_class.py CMB/derived outputs (default: cmb)")
@@ -59,7 +59,7 @@ def main():
     print(f"Project: {root}; output type: {args.kind}; "
           f"output directory: {args.out_dir if args.out_dir is not None else 'from each script'}", flush=True)
     scripts = args.scripts or sorted(
-        [p for p in root.glob("*.sh")
+        [p for p in (root / "scripts").glob("*.sh")
          if re.fullmatch(r"(?:test_|val_)?data\d+\.sh", p.name)],
         key=lambda p: (p.name.split("data")[0], int(re.search(r"\d+", p.name)[0])),
     )

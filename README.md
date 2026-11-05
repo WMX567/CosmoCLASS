@@ -13,12 +13,12 @@ Generate cosmological parameters with Latin hypercube sampling (LHS) and compute
 | `class_public/` | CLASS-PT source code and Python interface for self-interacting neutrinos |
 | `dataset/` | Default parameter directory, created during sampling |
 | `output/` | Default results directory, created during computation |
-| `data_generator.sh` | Slurm sampling job |
-| `data1.sh` … `data30.sh` | Thirty training jobs, 2000 samples per job |
-| `test_data1.sh` … `test_data2.sh`, `val_data1.sh` … `val_data2.sh` | Two jobs per split, 2000 samples per job |
-| `start.sh` | Submit all thirty training jobs |
+| `scripts/data_generator.sh` | Slurm sampling job |
+| `scripts/data1.sh` … `scripts/data30.sh` | Thirty training jobs, 2000 samples per job |
+| `scripts/test_data1.sh` … `scripts/test_data2.sh`, `scripts/val_data1.sh` … `scripts/val_data2.sh` | Two jobs per split, 2000 samples per job |
+| `scripts/start.sh` | Submit all thirty training jobs |
 
-The data-generation entry points and job scripts live in the project root. Duplicate Python entry points, the obsolete job generator, and unused legacy logging and plotting scripts have been removed.
+Python data-generation entry points live in the project root; all shell scripts live in `scripts/`. Duplicate Python entry points, the obsolete job generator, and unused legacy logging and plotting scripts have been removed.
 
 ## Model and interface
 
@@ -141,17 +141,17 @@ The `conda` command must be available on `PATH`, and `multinest` must contain th
 
 ```bash
 export COSMOCLASS_DIR=/path/to/CosmoCLASS
-sbatch "$COSMOCLASS_DIR/data_generator.sh"
+sbatch "$COSMOCLASS_DIR/scripts/data_generator.sh"
 ```
 
 Wait for sampling to finish successfully and confirm that the parameter files exist, then submit the computation jobs:
 
 ```bash
-bash "$COSMOCLASS_DIR/start.sh"
-sbatch "$COSMOCLASS_DIR/test_data1.sh"
-sbatch "$COSMOCLASS_DIR/test_data2.sh"
-sbatch "$COSMOCLASS_DIR/val_data1.sh"
-sbatch "$COSMOCLASS_DIR/val_data2.sh"
+bash "$COSMOCLASS_DIR/scripts/start.sh"
+sbatch "$COSMOCLASS_DIR/scripts/test_data1.sh"
+sbatch "$COSMOCLASS_DIR/scripts/test_data2.sh"
+sbatch "$COSMOCLASS_DIR/scripts/val_data1.sh"
+sbatch "$COSMOCLASS_DIR/scripts/val_data2.sh"
 ```
 
 Spectrum jobs request `--mem=32G` per node and run Python with unbuffered output (`python -u`). This is an increased starting allocation after a 10 GB job was OOM-killed, not a measured guarantee that 32 GB is sufficient. Precision settings are unchanged. First submit one job and inspect its memory usage before launching all thirty.
@@ -166,15 +166,15 @@ sacct -j 12356838 --format=JobID,State,ReqMem,MaxRSS,Elapsed
 
 `MaxRSS` reports the largest recorded task RSS for a step; availability depends on cluster accounting. See the [Slurm sacct documentation](https://slurm.schedmd.com/sacct.html). Samples are computed sequentially: reducing the 2000-sample batch size does not by itself reduce the memory needed for one sample.
 
-`start.sh` submits only the training jobs. It does not wait for sampling or submit the test and validation jobs.
+`scripts/start.sh` submits only the training jobs. It does not wait for sampling or submit the test and validation jobs.
 
-Training script `dataN.sh` processes indices `[2000 × (N−1), 2000 × N)`. The thirty jobs cover all 60000 training samples without gaps or overlap. Each of the test and validation splits uses two jobs covering `[0, 2000)` and `[2000, 4000)`, with prefixes `classpt_sinu_test` and `classpt_sinu_val`, respectively. There are 34 spectrum-computation jobs in total. The separate sampling job creates all three parameter files. If you change the sample counts, update the job index ranges and the loop in `start.sh` accordingly.
+Training script `scripts/dataN.sh` processes indices `[2000 × (N−1), 2000 × N)`. The thirty jobs cover all 60000 training samples without gaps or overlap. Each of the test and validation splits uses two jobs covering `[0, 2000)` and `[2000, 4000)`, with prefixes `classpt_sinu_test` and `classpt_sinu_val`, respectively. There are 34 spectrum-computation jobs in total. The separate sampling job creates all three parameter files. If you change the sample counts, update the job index ranges and the loop in `scripts/start.sh` accordingly.
 
-Scripts locate the project using `COSMOCLASS_DIR` first, then `SLURM_SUBMIT_DIR`, or their own directory during ordinary Bash execution. Since Slurm copies job scripts, explicitly set `COSMOCLASS_DIR` when submitting from another directory.
+Scripts locate the project using `COSMOCLASS_DIR` first, then `SLURM_SUBMIT_DIR`, or the parent of their own `scripts/` directory during ordinary Bash execution. Submitting from `scripts/` is also supported. Since Slurm copies job scripts, explicitly set `COSMOCLASS_DIR` when submitting from another directory.
 
 Results are written to the project's `output/` directory. Relative Slurm log paths are resolved against the job working directory set at submission, and are unaffected by `cd` inside the script. The batch training launcher explicitly sets the job working directory to the project root.
 
-`class_public/reproduce.sh` runs the original `david_test.py` from `class_public/` and is separate from this data-generation workflow. `class_public/doc/input/make1.sh` and `make2.sh` generate documentation and first switch to their own directory.
+`scripts/reproduce.sh` runs the original `david_test.py` from `class_public/` and is separate from this data-generation workflow. `scripts/make1.sh` and `scripts/make2.sh` generate documentation and first switch to `class_public/doc/input/`.
 
 ## Output format
 
@@ -238,7 +238,7 @@ Run the status check on the machine containing your parameter and output files:
 ```bash
 python job_status.py
 # Check only selected jobs:
-python job_status.py data1.sh data2.sh
+python job_status.py scripts/data1.sh scripts/data2.sh
 ```
 
 For each script, this reads the current `--start`, `--end`, `--params-file`,
@@ -253,12 +253,12 @@ or dynamically constructed commands.
 To fill unfinished samples, keep the parameter NPZ files and rerun:
 
 ```bash
-bash start.sh                 # all training jobs, skipping completed samples
+bash scripts/start.sh                 # all training jobs, skipping completed samples
 # Or submit just one edited script:
-sbatch --chdir="$PWD" data1.sh
+sbatch --chdir="$PWD" scripts/data1.sh
 ```
 
-You can directly edit the ranges or Slurm time/memory settings in `data*.sh`.
+You can directly edit the ranges or Slurm time/memory settings in `scripts/data*.sh`.
 Keep `--resume` to preserve matching completed samples, including those after
 holes in the output. No need to manually advance `--start`. Do not submit
 concurrent jobs with overlapping output indices. An unchanged numerical failure
