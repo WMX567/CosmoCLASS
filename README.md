@@ -2,6 +2,8 @@
 
 Generate cosmological parameters with Latin hypercube sampling (LHS) and compute CMB power spectra and derived parameters using the local CLASS-PT branch for self-interacting neutrinos.
 
+[Complete Data (Access Required)](https://drive.google.com/drive/folders/1bWHlz92t5ImAuzMWolQYfcBk6C2Dgarl?usp=sharing)
+
 ## Repository layout
 
 | Path | Purpose |
