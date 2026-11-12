@@ -43,13 +43,13 @@ PARAMS = {
     "gauge": "synchronous",
     "log10_G_eff_nu": -12.0,
 
-    "non linear": "hmcode",
-    "c_min": 3.13,
-    "eta_0": 0.603,
+    # "non linear": "hmcode",
+    # "c_min": 3.13,
+    # "eta_0": 0.603,
     "P_k_max_1/Mpc": 50.0,
     "perturb_sampling_stepsize": 0.05,
-    "nonlinear_min_k_max": 100,
-    "hmcode_min_k_max": 100,
+    # "nonlinear_min_k_max": 100,
+    # "hmcode_min_k_max": 100,
 }
 
 # sigma8 is defined at z=0 and only becomes available once mPk is requested;
