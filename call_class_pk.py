@@ -3,8 +3,8 @@
 call_class.py runs the self-interacting-neutrino CLASS-PT branch with
 output=tCl,pCl,lCl only; it never requests mPk, so no P(k) exists for any of
 the 68000 LHS samples. This driver reuses the same sample loop, parameter
-file, and self-interacting-neutrino physics settings, but requests mPk with
-HMcode nonlinear corrections and saves linear/nonlinear P(k) per sample.
+file, and self-interacting-neutrino physics settings, but requests mPk and
+saves linear P(k) per sample.
 
 Usage:
     python call_class_pk.py --pk-z 0 0.5 1 2 3 \
@@ -43,13 +43,8 @@ PARAMS = {
     "gauge": "synchronous",
     "log10_G_eff_nu": -12.0,
 
-    # "non linear": "hmcode",
-    # "c_min": 3.13,
-    # "eta_0": 0.603,
-    "P_k_max_1/Mpc": 50.0,
+    "P_k_max_1/Mpc": 200.0,
     "perturb_sampling_stepsize": 0.05,
-    # "nonlinear_min_k_max": 100,
-    # "hmcode_min_k_max": 100,
 }
 
 # sigma8 is defined at z=0 and only becomes available once mPk is requested;
@@ -58,8 +53,8 @@ PARAMS = {
 DERIVED_NAMES = ["sigma8"]
 
 K_MIN = 1e-4
-K_MAX_OUT = 50.0
-N_K = 500
+K_MAX_OUT = 200.0
+N_K = 600
 
 
 def z_tag(z: float) -> str:
@@ -70,7 +65,7 @@ def pk_sample_complete(path: Path, index: int, prefix: str, params: dict, pk_z: 
     """Mirror sample_status.sample_complete, for a single-z P(k) archive."""
     try:
         with np.load(path, allow_pickle=False) as archive:
-            arrays = {key: archive[key] for key in ("k", "pk_lin", "pk_nl", "z")}
+            arrays = {key: archive[key] for key in ("k", "pk_lin", "z")}
             if any(np.asarray(value).size == 0 for value in arrays.values()):
                 return False
             if float(arrays["z"]) != pk_z:
@@ -169,8 +164,7 @@ def main() -> None:
             pk_by_z = {}
             for z in args.pk_z:
                 pk_lin = np.array([cosmo.pk_lin(ki, z) for ki in k])
-                pk_nl = np.array([cosmo.pk(ki, z) for ki in k])
-                pk_by_z[z] = (pk_lin, pk_nl)
+                pk_by_z[z] = pk_lin
         finally:
             cosmo.struct_cleanup()
             cosmo.empty()
@@ -188,19 +182,18 @@ def main() -> None:
         }
         meta_json = np.array(json.dumps(meta))
 
-        for z, (pk_lin, pk_nl) in pk_by_z.items():
+        for z, pk_lin in pk_by_z.items():
             pk_path = pk_paths[z]
             np.savez_compressed(
                 pk_path,
                 k=k,
                 pk_lin=pk_lin,
-                pk_nl=pk_nl,
                 z=np.array(z),
                 names=np.array(DERIVED_NAMES),
                 values=np.array([derived[name] for name in DERIVED_NAMES], dtype=float),
                 derived_json=np.array(json.dumps(derived)),
                 units=np.array(json.dumps(
-                    {"k": "1/Mpc", "pk_lin": "Mpc3", "pk_nl": "Mpc3"}
+                    {"k": "1/Mpc", "pk_lin": "Mpc3"}
                 )),
                 meta_json=meta_json,
             )
